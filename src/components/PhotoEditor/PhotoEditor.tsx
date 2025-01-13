@@ -327,7 +327,7 @@ export const PhotoEditor: React.FC = () => {
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-2 text-sm text-[#ff6b2b] hover:text-[#ff8f5a] transition-colors"
                     >
-                        <span>© 2024 AI16Z™</span>
+                        <span>2024 elizaOS</span>
                         <svg
                             className="w-4 h-4 fill-current"
                             xmlns="http://www.w3.org/2000/svg"
