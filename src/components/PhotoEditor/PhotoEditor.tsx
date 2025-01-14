@@ -235,7 +235,7 @@ export const PhotoEditor: React.FC = () => {
             <div className="flex flex-col items-center w-full max-w-7xl mx-auto">
                 <div className="text-center mb-8">
                     <h1 className="text-[#ff6b2b] text-4xl uppercase tracking-wider font-bold m-0">
-                        Put on your AI16Z hat
+                        Put on your hat
                     </h1>
                     <p className="text-[#ff8f5a] text-lg mt-2">
                         BE A PARTNER
@@ -262,7 +262,7 @@ export const PhotoEditor: React.FC = () => {
                     onTouchCancel={handleTouchEnd}
                 >
                     <div className="absolute top-4 right-4 px-4 py-2 bg-[#ff6b2b]/90 rounded-full text-white text-sm font-semibold flex items-center gap-2 z-10">
-                        🤖 AI16Z
+                        🤖 elizaOS Hat
                     </div>
 
                     {baseImage && (
