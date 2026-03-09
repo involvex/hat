@@ -78,7 +78,9 @@ export const PhotoEditor: React.FC = () => {
   const overlayRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
   const dragStart = useRef<Position>({ x: 0, y: 0 });
-  const statusTimer = useRef<ReturnType<typeof setTimeout>>();
+  const statusTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
 
   /* ── Theme effect ──────────────────────────────────── */
   useEffect(() => {
@@ -332,14 +334,19 @@ export const PhotoEditor: React.FC = () => {
     transform.scale,
   ]);
 
-  /* ── Hat overlay CSS vars (avoids inline transform style) */
-  const overlayVars = {
-    "--hat-x": `${transform.position.x}px`,
-    "--hat-y": `${transform.position.y}px`,
-    "--hat-rotation": `${transform.rotation}deg`,
-    "--hat-scale-x": `${transform.scale * (transform.flipX ? -1 : 1)}`,
-    "--hat-scale-y": `${transform.scale}`,
-  } as React.CSSProperties;
+  /* ── Hat overlay CSS vars via ref (avoids inline style JSX prop) */
+  useEffect(() => {
+    const el = overlayRef.current;
+    if (!el) return;
+    el.style.setProperty("--hat-x", `${transform.position.x}px`);
+    el.style.setProperty("--hat-y", `${transform.position.y}px`);
+    el.style.setProperty("--hat-rotation", `${transform.rotation}deg`);
+    el.style.setProperty(
+      "--hat-scale-x",
+      `${transform.scale * (transform.flipX ? -1 : 1)}`,
+    );
+    el.style.setProperty("--hat-scale-y", `${transform.scale}`);
+  }, [transform]);
 
   /* ── Render ────────────────────────────────────────── */
   return (
@@ -409,7 +416,6 @@ export const PhotoEditor: React.FC = () => {
             <div
               ref={overlayRef}
               className="pe-hat-overlay"
-              style={overlayVars}
               onMouseDown={handleMouseDown}
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
@@ -500,28 +506,21 @@ export const PhotoEditor: React.FC = () => {
             aria-label="Available hats"
           >
             {hats.map((hat) => (
-              <div
-                key={hat.id}
-                className={`pe-hat-card${selectedHatId === hat.id ? " pe-hat-card--selected" : ""}`}
-                onClick={() => setSelectedHatId(hat.id)}
-                role="option"
-                aria-selected={selectedHatId === hat.id}
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ")
-                    setSelectedHatId(hat.id);
-                }}
-                aria-label={`${hat.label} hat${hat.isCustom ? " (custom)" : ""}`}
-              >
-                <img src={hat.src} alt={hat.label} className="pe-hat-thumb" />
-                <span className="pe-hat-name">{hat.label}</span>
+              <div key={hat.id} className="pe-hat-card-wrapper">
+                <button
+                  className={`pe-hat-card${selectedHatId === hat.id ? " pe-hat-card--selected" : ""}`}
+                  onClick={() => setSelectedHatId(hat.id)}
+                  role="option"
+                  aria-selected={selectedHatId === hat.id}
+                  aria-label={`${hat.label} hat${hat.isCustom ? " (custom)" : ""}`}
+                >
+                  <img src={hat.src} alt={hat.label} className="pe-hat-thumb" />
+                  <span className="pe-hat-name">{hat.label}</span>
+                </button>
                 {hat.isCustom && (
                   <button
                     className="pe-hat-remove"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleRemoveCustomHat(hat.id);
-                    }}
+                    onClick={() => handleRemoveCustomHat(hat.id)}
                     aria-label={`Remove ${hat.label}`}
                     title="Remove"
                   >

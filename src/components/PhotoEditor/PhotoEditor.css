@@ -330,8 +330,12 @@
   padding-right: 2px;
 }
 
-.pe-hat-card {
+.pe-hat-card-wrapper {
   position: relative;
+}
+
+.pe-hat-card {
+  width: 100%;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -394,7 +398,7 @@
   opacity: 0;
   transition: opacity var(--transition);
 }
-.pe-hat-card:hover .pe-hat-remove {
+.pe-hat-card-wrapper:hover .pe-hat-remove {
   opacity: 1;
 }
 
