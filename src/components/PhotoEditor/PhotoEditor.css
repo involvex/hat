@@ -1,0 +1,553 @@
+﻿/* =================================================
+   PhotoEditor.css  –  elizaOS Hat Editor
+   ================================================= */
+
+/* ── CSS custom properties (tokens) ─────────────── */
+.photo-editor-root {
+  --bg: #0a0b0e;
+  --surface: #13151a;
+  --surface-alt: #1c1f27;
+  --border: #2a2e3b;
+  --accent: #7b61ff;
+  --accent-soft: rgba(123, 97, 255, 0.15);
+  --accent-glow: rgba(123, 97, 255, 0.35);
+  --text: #e8eaf0;
+  --text-muted: #8a8fa8;
+  --success: #22c55e;
+  --error: #ef4444;
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --shadow: 0 4px 24px rgba(0, 0, 0, 0.45);
+  --transition: 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.photo-editor-root.theme-light {
+  --bg: #f0f2f7;
+  --surface: #ffffff;
+  --surface-alt: #eaecf3;
+  --border: #d1d5e0;
+  --accent: #5b3ff5;
+  --accent-soft: rgba(91, 63, 245, 0.12);
+  --accent-glow: rgba(91, 63, 245, 0.25);
+  --text: #1a1c24;
+  --text-muted: #6b6f80;
+  --shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* ── Layout root ──────────────────────────────────── */
+.photo-editor-root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Space Grotesk", system-ui, sans-serif;
+  transition:
+    background var(--transition),
+    color var(--transition);
+}
+
+/* ── Header ───────────────────────────────────────── */
+.pe-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 2rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.pe-header-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.pe-logo-emoji {
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.pe-title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, var(--accent), #a78bfa);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.pe-header-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.pe-subtitle {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.pe-theme-btn {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 0.65rem;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition:
+    background var(--transition),
+    transform var(--transition);
+  line-height: 1;
+}
+.pe-theme-btn:hover {
+  background: var(--accent-soft);
+  transform: scale(1.08);
+}
+.pe-theme-btn:active {
+  transform: scale(0.95);
+}
+
+/* ── Main ─────────────────────────────────────────── */
+.pe-main {
+  flex: 1;
+  display: flex;
+  gap: 1.5rem;
+  padding: 1.5rem 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ── Canvas section ───────────────────────────────── */
+.pe-canvas-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+/* Upload button */
+.pe-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--accent);
+  color: #fff;
+  border-radius: var(--radius-sm);
+  padding: 0.55rem 1.1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  align-self: flex-start;
+  transition:
+    opacity var(--transition),
+    transform var(--transition);
+  user-select: none;
+}
+.pe-upload-btn input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+.pe-upload-btn:hover {
+  opacity: 0.88;
+}
+.pe-upload-btn:active {
+  transform: scale(0.97);
+}
+.pe-upload-icon {
+  font-size: 1rem;
+}
+
+/* Canvas */
+.pe-canvas {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  aspect-ratio: 4 / 3;
+  width: 100%;
+  box-shadow: var(--shadow);
+  user-select: none;
+}
+
+.pe-canvas-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  pointer-events: none;
+}
+.pe-canvas-placeholder-icon {
+  font-size: 3rem;
+}
+
+.pe-base-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  display: block;
+}
+
+/* Hat overlay – transform driven by CSS custom properties */
+.pe-hat-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  transform: translate(calc(var(--hat-x, 0px)), calc(var(--hat-y, 0px)))
+    rotate(var(--hat-rotation, 0deg))
+    scale(var(--hat-scale-x, 1), var(--hat-scale-y, 1));
+}
+.pe-hat-overlay:active {
+  cursor: grabbing;
+}
+
+.pe-hat-image {
+  width: 100px;
+  height: auto;
+  object-fit: contain;
+  pointer-events: none;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+/* Controls */
+.pe-controls {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1rem;
+}
+
+.pe-controls-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.pe-controls-group {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.pe-controls-divider {
+  width: 1px;
+  height: 1.5rem;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+.pe-btn {
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.42rem 0.8rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background var(--transition),
+    transform var(--transition);
+  font-family: inherit;
+  line-height: 1.4;
+}
+.pe-btn:active {
+  transform: scale(0.93);
+}
+
+.pe-btn-ghost {
+  background: var(--surface-alt);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.pe-btn-ghost:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.pe-btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+.pe-btn-primary:hover:not(:disabled) {
+  opacity: 0.88;
+}
+.pe-btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pe-btn-save {
+  margin-left: auto;
+  padding: 0.42rem 1.1rem;
+}
+
+/* ── Sidebar ──────────────────────────────────────── */
+.pe-sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.pe-sidebar-title {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+/* Hat grid */
+.pe-hat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+  max-height: 380px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.pe-hat-card {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  transition:
+    border-color var(--transition),
+    box-shadow var(--transition);
+}
+.pe-hat-card:hover,
+.pe-hat-card:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  outline: none;
+}
+.pe-hat-card--selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+.pe-hat-thumb {
+  width: 56px;
+  height: 40px;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+.pe-hat-name {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.pe-hat-remove {
+  position: absolute;
+  top: 2px;
+  right: 3px;
+  background: var(--error);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+.pe-hat-card:hover .pe-hat-remove {
+  opacity: 1;
+}
+
+/* Custom hat upload button */
+.pe-custom-hat-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.55rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    border-color var(--transition),
+    color var(--transition);
+  user-select: none;
+}
+.pe-custom-hat-btn input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+.pe-custom-hat-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ── Toast ────────────────────────────────────────── */
+.pe-toast {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.6rem 1.2rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  font-weight: 500;
+  box-shadow: var(--shadow);
+  z-index: 999;
+  animation: pe-toast-in 0.2s ease;
+  white-space: nowrap;
+}
+.pe-toast--success {
+  background: var(--success);
+  color: #fff;
+}
+.pe-toast--error {
+  background: var(--error);
+  color: #fff;
+}
+
+@keyframes pe-toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* ── Footer ───────────────────────────────────────── */
+.pe-footer {
+  display: flex;
+  justify-content: center;
+  padding: 1rem;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.pe-footer-link {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.82rem;
+  transition: color var(--transition);
+}
+.pe-footer-link:hover {
+  color: var(--text);
+}
+
+.pe-footer-x-icon {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+
+/* ── Responsive ───────────────────────────────────── */
+@media (max-width: 900px) {
+  .pe-main {
+    flex-direction: column;
+    padding: 1rem;
+  }
+  .pe-sidebar {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  .pe-hat-grid {
+    grid-template-columns: repeat(4, 1fr);
+    max-height: none;
+  }
+  .pe-custom-hat-btn {
+    align-self: flex-start;
+    width: auto;
+  }
+}
+
+@media (max-width: 600px) {
+  .pe-header {
+    padding: 0.8rem 1rem;
+  }
+  .pe-main {
+    padding: 0.75rem 0.75rem;
+  }
+  .pe-subtitle {
+    display: none;
+  }
+  .pe-hat-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .pe-controls-row {
+    gap: 0.35rem;
+  }
+}
+
+@media (max-width: 400px) {
+  .pe-title {
+    font-size: 1.05rem;
+  }
+  .pe-hat-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .pe-controls-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .pe-controls-divider {
+    display: none;
+  }
+  .pe-controls-group {
+    justify-content: center;
+  }
+  .pe-btn-save {
+    margin: 0;
+  }
+}

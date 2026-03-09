@@ -1,90 +1,180 @@
-import React, { useState, useRef, useCallback, useEffect } from "react";
-import rightImage from "../../assets/right.png";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import leftImage from "../../assets/left.png";
+import rightImage from "../../assets/right.png";
+import "./PhotoEditor.css";
 import { Position, Transform } from "./types";
 
+/* ── Types ───────────────────────────────────────────── */
+type Theme = "dark" | "light";
+
+interface Hat {
+  id: string;
+  label: string;
+  src: string;
+  isCustom?: boolean;
+}
+
+/* ── Constants ───────────────────────────────────────── */
+const STORAGE_THEME = "hat-editor-theme";
+const STORAGE_CUSTOM_HATS = "hat-editor-custom-hats";
+
+const BUILTIN_HATS: Hat[] = [
+  { id: "right", label: "elizaOS →", src: rightImage },
+  { id: "left", label: "elizaOS ←", src: leftImage },
+];
+
+const INITIAL_TRANSFORM: Transform = {
+  position: { x: 0, y: 0 },
+  rotation: 0,
+  scale: 1,
+  flipX: false,
+};
+
+/* ── Helper ──────────────────────────────────────────── */
+function loadCustomHats(): Hat[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_CUSTOM_HATS);
+    return raw ? (JSON.parse(raw) as Hat[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistCustomHats(hats: Hat[]): void {
+  localStorage.setItem(STORAGE_CUSTOM_HATS, JSON.stringify(hats));
+}
+
+/* ── Component ───────────────────────────────────────── */
 export const PhotoEditor: React.FC = () => {
+  /* Theme */
+  const [theme, setTheme] = useState<Theme>(
+    () => (localStorage.getItem(STORAGE_THEME) as Theme | null) ?? "dark",
+  );
+
+  /* Hats */
+  const [hats, setHats] = useState<Hat[]>(() => [
+    ...BUILTIN_HATS,
+    ...loadCustomHats(),
+  ]);
+  const [selectedHatId, setSelectedHatId] = useState<string>("right");
+  const currentHat = hats.find((h) => h.id === selectedHatId) ?? hats[0];
+
+  /* Image */
   const [baseImage, setBaseImage] = useState<string>("");
-  const [currentHatImage, setCurrentHatImage] = useState<string>(rightImage);
-  const [transform, setTransform] = useState<Transform>({
-    position: { x: 0, y: 0 },
-    rotation: 0,
-    scale: 1,
-    flipX: false,
+  const [originalImageSize, setOriginalImageSize] = useState({
+    width: 0,
+    height: 0,
   });
-  const [originalImageSize, setOriginalImageSize] = useState<{
-    width: number;
-    height: number;
-  }>({ width: 0, height: 0 });
+  const [transform, setTransform] = useState<Transform>(INITIAL_TRANSFORM);
+
+  /* Status toast */
   const [status, setStatus] = useState<{
     message: string;
     type: "error" | "success";
   } | null>(null);
 
+  /* Refs */
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
   const dragStart = useRef<Position>({ x: 0, y: 0 });
-  const statusTimeoutRef = useRef<NodeJS.Timeout>();
+  const statusTimer = useRef<ReturnType<typeof setTimeout>>();
 
+  /* ── Theme effect ──────────────────────────────────── */
+  useEffect(() => {
+    localStorage.setItem(STORAGE_THEME, theme);
+  }, [theme]);
+
+  /* ── Cleanup timer on unmount ──────────────────────── */
+  useEffect(() => () => clearTimeout(statusTimer.current), []);
+
+  /* ── showStatus (stable ref – empty deps intentional) */
+  const showStatus = useCallback(
+    (message: string, type: "error" | "success") => {
+      clearTimeout(statusTimer.current);
+      setStatus({ message, type });
+      statusTimer.current = setTimeout(() => setStatus(null), 2200);
+    },
+    [],
+  );
+
+  /* ── Image upload ──────────────────────────────────── */
   const handleBaseImageUpload = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
-      if (file) {
-        if (!file.type.startsWith("image/")) {
-          showStatus("Please select an image file", "error");
-          return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const img = new Image();
-          img.onload = () => {
-            setOriginalImageSize({ width: img.width, height: img.height });
-            showStatus("Image loaded successfully", "success");
-          };
-          const dataUrl = e.target?.result as string;
-          img.src = dataUrl;
-          setBaseImage(dataUrl);
+      if (!file) return;
+      if (!file.type.startsWith("image/")) {
+        showStatus("Please select an image file", "error");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        const img = new Image();
+        img.onload = () => {
+          setOriginalImageSize({ width: img.width, height: img.height });
+          showStatus("Photo loaded!", "success");
         };
-        reader.readAsDataURL(file);
-      }
+        img.src = dataUrl;
+        setBaseImage(dataUrl);
+      };
+      reader.readAsDataURL(file);
     },
-    [],
+    [showStatus],
   );
 
-  const showStatus = useCallback(
-    (message: string, type: "error" | "success") => {
-      if (statusTimeoutRef.current) {
-        clearTimeout(statusTimeoutRef.current);
+  /* ── Custom hat upload ─────────────────────────────── */
+  const handleCustomHatUpload = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      if (!file.type.startsWith("image/")) {
+        showStatus("Please select an image file", "error");
+        return;
       }
-
-      setStatus({ message, type });
-
-      statusTimeoutRef.current = setTimeout(() => {
-        setStatus(null);
-      }, 1000);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        const newHat: Hat = {
+          id: `custom-${Date.now()}`,
+          label: file.name.replace(/\.[^.]+$/, "").slice(0, 20),
+          src: dataUrl,
+          isCustom: true,
+        };
+        setHats((prev) => {
+          const updated = [...prev, newHat];
+          persistCustomHats(updated.filter((h) => h.isCustom));
+          return updated;
+        });
+        setSelectedHatId(newHat.id);
+        showStatus("Custom hat added!", "success");
+      };
+      reader.readAsDataURL(file);
+      event.target.value = "";
     },
-    [],
+    [showStatus],
   );
 
-  useEffect(() => {
-    return () => {
-      if (statusTimeoutRef.current) {
-        clearTimeout(statusTimeoutRef.current);
-      }
-    };
+  /* ── Remove custom hat ─────────────────────────────── */
+  const handleRemoveCustomHat = useCallback((hatId: string) => {
+    setHats((prev) => {
+      const updated = prev.filter((h) => h.id !== hatId);
+      persistCustomHats(updated.filter((h) => h.isCustom));
+      return updated;
+    });
+    setSelectedHatId("right");
   }, []);
 
+  /* ── Drag: touch ───────────────────────────────────── */
   const handleTouchStart = useCallback(
     (e: React.TouchEvent) => {
       e.preventDefault();
       if (e.touches.length === 1) {
         isDragging.current = true;
-        const touch = e.touches[0];
+        const t = e.touches[0];
         dragStart.current = {
-          x: touch.clientX - transform.position.x,
-          y: touch.clientY - transform.position.y,
+          x: t.clientX - transform.position.x,
+          y: t.clientY - transform.position.y,
         };
       }
     },
@@ -94,12 +184,12 @@ export const PhotoEditor: React.FC = () => {
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     e.preventDefault();
     if (isDragging.current && e.touches.length === 1) {
-      const touch = e.touches[0];
+      const t = e.touches[0];
       setTransform((prev) => ({
         ...prev,
         position: {
-          x: touch.clientX - dragStart.current.x,
-          y: touch.clientY - dragStart.current.y,
+          x: t.clientX - dragStart.current.x,
+          y: t.clientY - dragStart.current.y,
         },
       }));
     }
@@ -109,6 +199,7 @@ export const PhotoEditor: React.FC = () => {
     isDragging.current = false;
   }, []);
 
+  /* ── Drag: mouse ───────────────────────────────────── */
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
       isDragging.current = true;
@@ -136,106 +227,86 @@ export const PhotoEditor: React.FC = () => {
     isDragging.current = false;
   }, []);
 
-  const handleRotate = useCallback((direction: "left" | "right") => {
-    setTransform((prev) => ({
-      ...prev,
-      rotation: prev.rotation + (direction === "left" ? -15 : 15),
+  /* ── Transform controls ────────────────────────────── */
+  const handleRotate = useCallback((dir: "left" | "right") => {
+    setTransform((p) => ({
+      ...p,
+      rotation: p.rotation + (dir === "left" ? -15 : 15),
     }));
   }, []);
 
-  const handleScale = useCallback((direction: "up" | "down") => {
-    setTransform((prev) => ({
-      ...prev,
-      scale: Math.max(
-        0.1,
-        Math.min(7, prev.scale * (direction === "up" ? 1.1 : 0.9)),
-      ),
+  const handleScale = useCallback((dir: "up" | "down") => {
+    setTransform((p) => ({
+      ...p,
+      scale: Math.max(0.1, Math.min(7, p.scale * (dir === "up" ? 1.1 : 0.9))),
     }));
   }, []);
 
   const handleFlip = useCallback(() => {
-    setCurrentHatImage((prev) =>
-      prev === rightImage ? leftImage : rightImage,
-    );
+    setTransform((p) => ({ ...p, flipX: !p.flipX }));
   }, []);
 
   const handleReset = useCallback(() => {
-    setTransform({
-      position: { x: 0, y: 0 },
-      rotation: 0,
-      scale: 1,
-      flipX: false,
-    });
+    setTransform(INITIAL_TRANSFORM);
   }, []);
 
+  /* ── Save / download ───────────────────────────────── */
   const handleSave = useCallback(async () => {
     if (!baseImage || !overlayRef.current || !containerRef.current) {
-      showStatus("Please upload an image first", "error");
+      showStatus("Please upload a photo first", "error");
       return;
     }
-
     try {
       const canvas = document.createElement("canvas");
       const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        throw new Error("Could not get canvas context");
-      }
+      if (!ctx) throw new Error("Could not get canvas context");
 
       const baseImg = new Image();
       baseImg.src = baseImage;
-      await new Promise((resolve) => (baseImg.onload = resolve));
+      await new Promise<void>((res) => {
+        baseImg.onload = () => res();
+      });
 
       canvas.width = originalImageSize.width;
       canvas.height = originalImageSize.height;
-
       ctx.drawImage(baseImg, 0, 0, canvas.width, canvas.height);
 
-      const container = containerRef.current;
-      const containerRect = container.getBoundingClientRect();
-      const containerAspect = containerRect.width / containerRect.height;
+      const rect = containerRef.current.getBoundingClientRect();
+      const containerAspect = rect.width / rect.height;
       const imageAspect = canvas.width / canvas.height;
 
-      let displayedWidth = containerRect.width;
-      let displayedHeight = containerRect.height;
-      if (containerAspect > imageAspect) {
-        displayedWidth = displayedHeight * imageAspect;
-      } else {
-        displayedHeight = displayedWidth / imageAspect;
-      }
+      let dW = rect.width;
+      let dH = rect.height;
+      if (containerAspect > imageAspect) dW = dH * imageAspect;
+      else dH = dW / imageAspect;
 
-      const scaleX = canvas.width / displayedWidth;
-      const scaleY = canvas.height / displayedHeight;
+      const scaleX = canvas.width / dW;
+      const scaleY = canvas.height / dH;
 
-      const overlayImg = overlayRef.current.querySelector("img");
-      if (overlayImg) {
+      if (overlayRef.current.querySelector("img")) {
         const hatImg = new Image();
-        hatImg.src = currentHatImage;
-        await new Promise((resolve) => (hatImg.onload = resolve));
+        hatImg.src = currentHat.src;
+        await new Promise<void>((res) => {
+          hatImg.onload = () => res();
+        });
 
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
+        const cx = canvas.width / 2;
+        const cy = canvas.height / 2;
 
         ctx.save();
         ctx.translate(
-          centerX + transform.position.x * scaleX,
-          centerY + transform.position.y * scaleY,
+          cx + transform.position.x * scaleX,
+          cy + transform.position.y * scaleY,
         );
         ctx.rotate((transform.rotation * Math.PI) / 180);
-        if (transform.flipX) {
-          ctx.scale(-1, 1);
-        }
-        ctx.scale(transform.scale, transform.scale);
-
-        const overlayWidth = 100 * scaleX;
-        const overlayHeight = (overlayWidth * hatImg.height) / hatImg.width;
-        ctx.drawImage(
-          hatImg,
-          -overlayWidth / 2,
-          -overlayHeight / 2,
-          overlayWidth,
-          overlayHeight,
+        ctx.scale(
+          transform.scale * (transform.flipX ? -1 : 1),
+          transform.scale,
         );
 
+        const ow = 100 * scaleX;
+        const oh = (ow * hatImg.height) / hatImg.width;
+        ctx.drawImage(hatImg, -ow / 2, -oh / 2, ow, oh);
         ctx.restore();
       }
 
@@ -243,10 +314,9 @@ export const PhotoEditor: React.FC = () => {
       link.download = "you-are-a-partner-now.png";
       link.href = canvas.toDataURL("image/png");
       link.click();
-
-      showStatus("Image saved successfully", "success");
-    } catch (error) {
-      console.error("Save error:", error);
+      showStatus("Saved!", "success");
+    } catch (err) {
+      console.error("Save error:", err);
       showStatus("Error saving image", "error");
     }
   }, [
@@ -254,7 +324,7 @@ export const PhotoEditor: React.FC = () => {
     showStatus,
     originalImageSize.width,
     originalImageSize.height,
-    currentHatImage,
+    currentHat.src,
     transform.position.x,
     transform.position.y,
     transform.rotation,
@@ -262,134 +332,251 @@ export const PhotoEditor: React.FC = () => {
     transform.scale,
   ]);
 
-  const getOverlayStyle = () => {
-    return {
-      transform: `translate(-50%, -50%) 
-                       translate(${transform.position.x}px, ${transform.position.y}px)
-                       rotate(${transform.rotation}deg)
-                       scale(${transform.scale * (transform.flipX ? -1 : 1)}, ${transform.scale})`,
-    };
-  };
+  /* ── Hat overlay CSS vars (avoids inline transform style) */
+  const overlayVars = {
+    "--hat-x": `${transform.position.x}px`,
+    "--hat-y": `${transform.position.y}px`,
+    "--hat-rotation": `${transform.rotation}deg`,
+    "--hat-scale-x": `${transform.scale * (transform.flipX ? -1 : 1)}`,
+    "--hat-scale-y": `${transform.scale}`,
+  } as React.CSSProperties;
 
+  /* ── Render ────────────────────────────────────────── */
   return (
-    <div className="flex flex-col items-center gap-4 p-4 w-full min-h-screen font-['Space_Grotesk'] bg-[#1a1a1a] text-[#f0f0f0] overflow-x-hidden">
-      <div className="flex flex-col items-center w-full mx-auto max-w-7xl">
-        <div className="mb-8 text-center">
-          <h1 className="text-[#ff6b2b] text-4xl uppercase tracking-wider font-bold m-0">
-            Put on your hat
-          </h1>
-          <p className="text-[#ff8f5a] text-lg mt-2">BE A PARTNER</p>
+    <div className={`photo-editor-root theme-${theme}`}>
+      {/* ── Header ── */}
+      <header className="pe-header">
+        <div className="pe-header-brand">
+          <span className="pe-logo-emoji" aria-hidden="true">
+            🎩
+          </span>
+          <h1 className="pe-title">Put On Your Hat</h1>
         </div>
-
-        <div className="w-full max-w-md">
-          <input
-            title="Upload your photo"
-            type="file"
-            accept="image/*"
-            onChange={handleBaseImageUpload}
-            className="w-full p-3 border-2 border-[#ff6b2b] rounded-lg bg-[#2a2a2a] text-white cursor-pointer transition-all hover:border-[#ff8f5a] hover:bg-[#3a3a3a]"
-          />
+        <div className="pe-header-right">
+          <p className="pe-subtitle">Be a Partner</p>
+          <button
+            className="pe-theme-btn"
+            onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
+            aria-label={
+              theme === "dark" ? "Switch to light mode" : "Switch to dark mode"
+            }
+            title={theme === "dark" ? "Light mode" : "Dark mode"}
+          >
+            {theme === "dark" ? "☀️" : "🌙"}
+          </button>
         </div>
+      </header>
 
-        <div
-          ref={containerRef}
-          className="relative w-full max-w-[800px] h-[600px] mx-auto mt-8 border-3 border-[#ff6b2b] rounded-xl overflow-hidden touch-none bg-[#2a2a2a] shadow-lg"
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-          onTouchCancel={handleTouchEnd}
-        >
-          <div className="absolute top-4 right-4 px-4 py-2 bg-[#ff6b2b]/90 rounded-full text-white text-sm font-semibold flex items-center gap-2 z-10">
-            🤖 elizaOS Hat
-          </div>
-
-          {baseImage && (
-            <img
-              src={baseImage}
-              alt="Base"
-              className="object-contain w-full h-full"
+      {/* ── Main ── */}
+      <main className="pe-main">
+        {/* Canvas area */}
+        <section className="pe-canvas-section">
+          <label className="pe-upload-btn">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleBaseImageUpload}
+              title="Upload your photo"
             />
-          )}
+            <span className="pe-upload-icon" aria-hidden="true">
+              📷
+            </span>
+            <span>{baseImage ? "Change photo" : "Upload your photo"}</span>
+          </label>
 
           <div
-            ref={overlayRef}
-            style={getOverlayStyle()}
-            className="absolute cursor-move top-1/2 left-1/2 touch-none filter drop-shadow-lg"
-            onMouseDown={handleMouseDown}
-            onTouchStart={handleTouchStart}
+            ref={containerRef}
+            className="pe-canvas"
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
+            onTouchCancel={handleTouchEnd}
+            aria-label="Hat editor canvas"
           >
-            <img
-              src={currentHatImage}
-              alt="Overlay"
-              className="w-[100px] h-auto select-none"
-              draggable={false}
-            />
-          </div>
-        </div>
+            {!baseImage && (
+              <div className="pe-canvas-placeholder" aria-hidden="true">
+                <span className="pe-canvas-placeholder-icon">🖼️</span>
+                <span>Upload a photo to get started</span>
+              </div>
+            )}
+            {baseImage && (
+              <img src={baseImage} alt="Portrait" className="pe-base-image" />
+            )}
 
-        <div className="flex flex-wrap gap-4 justify-center p-6 bg-[#2a2a2a] rounded-xl shadow-lg mt-4 w-full max-w-[800px]">
-          {[
-            "⟲ Rotate Left",
-            "⟳ Rotate Right",
-            "+ Scale Up",
-            "- Scale Down",
-            "↔️ Flip",
-            "Reset",
-            "Save Image",
-          ].map((text) => (
-            <button
-              key={text}
-              onClick={() => {
-                if (text === "⟲ Rotate Left") handleRotate("left");
-                else if (text === "⟳ Rotate Right") handleRotate("right");
-                else if (text === "+ Scale Up") handleScale("up");
-                else if (text === "- Scale Down") handleScale("down");
-                else if (text === "↔️ Flip") handleFlip();
-                else if (text === "Reset") handleReset();
-                else if (text === "Save Image") handleSave();
-              }}
-              disabled={text === "Save Image" && !baseImage}
-              className={`px-6 py-3 rounded-lg bg-[#ff6b2b] text-white cursor-pointer text-base font-semibold uppercase tracking-wider transition-all hover:bg-[#ff8f5a] hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 disabled:bg-gray-600 disabled:cursor-not-allowed disabled:transform-none`}
+            {/* Hat overlay — transform applied via CSS custom properties */}
+            <div
+              ref={overlayRef}
+              className="pe-hat-overlay"
+              style={overlayVars}
+              onMouseDown={handleMouseDown}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              aria-label="Drag to reposition hat"
             >
-              {text}
-            </button>
-          ))}
-        </div>
+              <img
+                src={currentHat.src}
+                alt={`${currentHat.label} hat`}
+                className="pe-hat-image"
+                draggable={false}
+              />
+            </div>
+          </div>
 
-        {status && (
+          {/* Controls */}
+          <div className="pe-controls">
+            <div className="pe-controls-row">
+              <div className="pe-controls-group">
+                <button
+                  className="pe-btn pe-btn-ghost"
+                  onClick={() => handleRotate("left")}
+                  title="Rotate left"
+                >
+                  ⟲ Left
+                </button>
+                <button
+                  className="pe-btn pe-btn-ghost"
+                  onClick={() => handleRotate("right")}
+                  title="Rotate right"
+                >
+                  ⟳ Right
+                </button>
+              </div>
+              <div className="pe-controls-divider" aria-hidden="true" />
+              <div className="pe-controls-group">
+                <button
+                  className="pe-btn pe-btn-ghost"
+                  onClick={() => handleScale("up")}
+                  title="Scale up"
+                >
+                  ＋
+                </button>
+                <button
+                  className="pe-btn pe-btn-ghost"
+                  onClick={() => handleScale("down")}
+                  title="Scale down"
+                >
+                  －
+                </button>
+              </div>
+              <div className="pe-controls-divider" aria-hidden="true" />
+              <div className="pe-controls-group">
+                <button
+                  className="pe-btn pe-btn-ghost"
+                  onClick={handleFlip}
+                  title="Flip hat"
+                >
+                  ↔ Flip
+                </button>
+                <button
+                  className="pe-btn pe-btn-ghost"
+                  onClick={handleReset}
+                  title="Reset transform"
+                >
+                  ↺ Reset
+                </button>
+              </div>
+              <button
+                className="pe-btn pe-btn-primary pe-btn-save"
+                onClick={handleSave}
+                disabled={!baseImage}
+                title="Download image with hat"
+              >
+                💾 Save
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* Hat selector sidebar */}
+        <aside className="pe-sidebar" aria-label="Hat selection">
+          <h2 className="pe-sidebar-title">Choose a Hat</h2>
+
           <div
-            className={`fixed bottom-20 right-8 px-6 py-3 rounded-lg 
-                    ${status.type === "error" ? "bg-red-500" : "bg-green-600"}
-                    text-white font-medium shadow-lg
-                    transition-opacity duration-300
-                    opacity-90 animate-fade-out`}
+            className="pe-hat-grid"
+            role="listbox"
+            aria-label="Available hats"
           >
-            {status.message}
+            {hats.map((hat) => (
+              <div
+                key={hat.id}
+                className={`pe-hat-card${selectedHatId === hat.id ? " pe-hat-card--selected" : ""}`}
+                onClick={() => setSelectedHatId(hat.id)}
+                role="option"
+                aria-selected={selectedHatId === hat.id}
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ")
+                    setSelectedHatId(hat.id);
+                }}
+                aria-label={`${hat.label} hat${hat.isCustom ? " (custom)" : ""}`}
+              >
+                <img src={hat.src} alt={hat.label} className="pe-hat-thumb" />
+                <span className="pe-hat-name">{hat.label}</span>
+                {hat.isCustom && (
+                  <button
+                    className="pe-hat-remove"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemoveCustomHat(hat.id);
+                    }}
+                    aria-label={`Remove ${hat.label}`}
+                    title="Remove"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            ))}
           </div>
-        )}
 
-        <div className="fixed bottom-4 right-4">
-          <a
-            href="https://x.com/ai16zdao"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 text-sm text-[#ff6b2b] hover:text-[#ff8f5a] transition-colors"
+          <label
+            className="pe-custom-hat-btn"
+            title="Upload a custom hat image"
           >
-            <span>2024 elizaOS</span>
-            <svg
-              className="w-4 h-4 fill-current"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-            >
-              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-            </svg>
-          </a>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleCustomHatUpload}
+            />
+            <span aria-hidden="true">➕</span>
+            <span>Upload Custom Hat</span>
+          </label>
+        </aside>
+      </main>
+
+      {/* Status toast */}
+      {status && (
+        <div
+          className={`pe-toast pe-toast--${status.type}`}
+          role="status"
+          aria-live="polite"
+        >
+          {status.type === "success" ? "✅" : "❌"} {status.message}
         </div>
-      </div>
+      )}
+
+      {/* Footer */}
+      <footer className="pe-footer">
+        <a
+          href="https://x.com/ai16zdao"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="pe-footer-link"
+        >
+          <span>© 2024 elizaOS</span>
+          <svg
+            className="pe-footer-x-icon"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+          </svg>
+        </a>
+      </footer>
     </div>
   );
 };

@@ -46,7 +46,11 @@
     "extends": [
       "react-app",
       "react-app/jest"
-    ]
+    ],
+    "rules": {
+      "unicode-bom": "off",
+      "jsx-a11y/img-redundant-alt": "off"
+    }
   },
   "browserslist": {
     "production": [
@@ -61,6 +65,7 @@
     ]
   },
   "devDependencies": {
+    "@babel/plugin-proposal-private-property-in-object": "*",
     "@eslint/css": "^0.14.1",
     "@eslint/js": "^10.0.1",
     "@involvex/prettier-config": "^0.0.4",
