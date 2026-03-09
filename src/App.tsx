@@ -1,12 +1,12 @@
-import React from 'react';
-import logo from './logo.svg';
-import './App.css';
-import PhotoEditor from './components/PhotoEditor/PhotoEditor';
+import React from "react";
+// import logo from './logo.svg';
+import "./App.css";
+import PhotoEditor from "./components/PhotoEditor/PhotoEditor";
 
 function App() {
   return (
     <div className="App">
-      <PhotoEditor/>
+      <PhotoEditor />
     </div>
   );
 }

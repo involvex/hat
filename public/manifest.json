@@ -1,6 +1,6 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
+  "short_name": "Involvex Hat",
+  "name": "Involvex Hat - A web Hat editor for elizaOS",
   "icons": [
     {
       "src": "favicon.ico",
