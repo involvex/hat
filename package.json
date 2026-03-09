@@ -23,7 +23,7 @@
   },
   "homepage": "https://involvex.github.io/hat",
   "repository": {
-    "url": "git+https://github.com/involvex/hat",
+    "url": "git+https://github.com/involvex/hat.git",
     "type": "git"
   },
   "author": {
