@@ -360,7 +360,6 @@ export const PhotoEditor: React.FC = () => {
           <h1 className="pe-title">Put On Your Hat</h1>
         </div>
         <div className="pe-header-right">
-          <p className="pe-subtitle">Be a Partner</p>
           <button
             className="pe-theme-btn"
             onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
@@ -560,12 +559,12 @@ export const PhotoEditor: React.FC = () => {
       {/* Footer */}
       <footer className="pe-footer">
         <a
-          href="https://x.com/ai16zdao"
+          href="https://involvex.github.io/hat"
           target="_blank"
           rel="noopener noreferrer"
           className="pe-footer-link"
         >
-          <span>© 2024 elizaOS</span>
+          <span>© 2026 Involvex</span>
           <svg
             className="pe-footer-x-icon"
             xmlns="http://www.w3.org/2000/svg"
